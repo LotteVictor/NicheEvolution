@@ -1,11 +1,7 @@
 # NicheEvolution
-This repository contains the simulation code for a metapopulation model on niche evolution and all the needed files to run it. 
-Haploid, annual species in variable environment,  H_t of Normal distribution
-survival of eggs dependent on environment
-(environment variable H_t, individual optimum h_ind, and tolerance g_ind)
-survival of larvae dependent on density
-Trade-off between fertility and niche-width=Th, α= cost of being a generalist
-in a landscape that varies in this environmental parameter
+This repository contains the simulation code for a metapopulation model on niche evolution and all the needed files to run it. The simulaiton itself is found in Model2.jl, the necessary parameters in ParametersDict.jl, the landscape files are the ones called autocor or cluster. The shell skript is used to run the simulations.
+The model simulates a haploid, annual species in variable environment H_t that varies within a Normal distribution.
+The survival of eggs is dependent on the environment (environment variable H_t, individual optimum h_ind, and tolerance g_ind), the survival of larvae is dependent on density. There is a trade-off between fertility and niche-width=Th,where α= cost of being a generalist. The landscapes additionally vary in the environmental parameter, but all have the same mean. A thorough explanation of the simulation for one population can be found in "Environmental change and variability influence niche evolution of isolated natural populations", C.S. Sieger. M.M.P.Cobben & T. Hovestadt, Regional Environmental Change,  https://doi.org/10.1007/s10113-019-01534-3
 
 
 License: GNU Affero General Public License v3.0
