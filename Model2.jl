@@ -237,25 +237,27 @@ function nearest_patch(numberrows::Int64, numbercols::Int64, p::Int64, q::Int64)
 end
 
 #function to CHANGE the landscape! Changes the position of the individuals in the landscape, or kills them (death through dispersal), also counts how many individuals emigrated and immigrated for each patch and returns those results in two two-dimensional arrays 
-function dispersal!(landscape::Array{TPatch,2}, argumentsdict::Dict, par::Dict)
+function dispersal!(landscape::Array{TPatch,2}, argumentsdict::Dict, par::Dict, H_t_landscape::Array{Array{Float64,1},2}, currGen::Int64)
     numberrows=length(landscape[1:end,1])
     numbercols=length(landscape[1,1:end])
     dispprob=Array{Array{Float64,1},2}(undef, numberrows, numbercols)
     n_disp=zeros(Int64, numberrows, numbercols)  #number of emigrated individuals
     n_imm=zeros(Int64, numberrows, numbercols) #number of immigrated individuals
+    n_beforedisp=0
     for p in 1:numberrows
         for q in 1:numbercols
-            absdiff= abs. (landscape[p,q].H_t_start .- landscape[p,q].v_hind)
             probvec=Array{Float64, 1}(undef, length(landscape[p,q].v_hind))
             if (argumentsdict["habitatemi"]==false) #if habitat independent dependent dispersal
                 for j in 1: length(landscape[p,q].v_hind)
-                    probvec[j]=landscape[p,q].v_a[j] #This is necessary to not have pointer references 
+                    probvec[j]=landscape[p,q].v_a[j] 
                 end #dispersal probability is the individual's base probability
             elseif (argumentsdict["habitatemi"]==true) #if habitat dependent dispersal
                 for j in 1: length(landscape[p,q].v_hind)
-                    if (landscape[p,q].v_deltah[j] < absdiff[j]) #and if difference between hind and environment is below the threshold
+                    tempmaladapt=((landscape[p,q].v_hind[j] - H_t_landscape[p,q][currGen])^2)/(landscape[p,q].v_gind[j]^2)
+                    tempfert=par["R0"] *landscape[p,q].v_tradeoff[j] *exp. (-tempmaladapt)
+                    if (landscape[p,q].v_deltah[j] > tempfert) #and if difference between hind and environment is below the threshold
                         probvec[j]=1 #dispersal probability is one
-                    elseif landscape[p,q].v_deltah[j]> absdiff[j] #but if difference between hind and environment is above the threshold
+                    elseif landscape[p,q].v_deltah[j]< tempfert #but if difference between hind and environment is above the threshold
                         probvec[j]=landscape[p,q].v_a[j] #dispersal probability is base probability
                     end
                 end
@@ -267,33 +269,41 @@ function dispersal!(landscape::Array{TPatch,2}, argumentsdict::Dict, par::Dict)
     for p in 1:numberrows
         for q in 1:numbercols
             i=1
+            #n_beforedisp=length(landscape[p,q].v_hind)
             while i<length(landscape[p,q].v_hind) #looping through all individuals in that patch
-                if (argumentsdict["habitatemi"]==false) #if habitat independent dispersal
-                    if argumentsdict["global_dispersal"]==true #and global dispersal
-                        newrow, newcol= global_patch(numberrows,numbercols, p, q) #the new patch is global
-                    elseif argumentsdict["global_dispersal"]==false #and nearest neighbour dispersal
-                        newrow, newcol= nearest_patch(numberrows, numbercols, p, q) #the new patch is in the neighboorhood
-                    end
-                elseif (argumentsdict["habitatemi"]==true) #if habitat dependent dispersal
-                    if argumentsdict["global_dispersal"]==true  #and global dispersal
-                    newrow, newcol= global_patch(numberrows,numbercols, p, q) #the new patch is global
-                    elseif argumentsdict["global_dispersal"]==false #and nearest neighbour dispersal
-                    newrow, newcol= nearest_patch(numberrows, numbercols, p, q) #the new patch is in the neighboorhood
-                    end
-                end
-                if (landscape[p,q].v_dispersed[i] == false) &&(dispprob[p,q][i]<rand()) &&(rand()>par["dispmort"]) #if  individual survives dispersal
+                myrand=rand()
+                if ((landscape[p,q].v_dispersed[i] == false) &&(myrand< dispprob[p,q][i])) #if  individual  disperses
+                    #if (p==32 && q==32)
+                     #   println(string("Zufallszahl: ", myrand, "  Dispersal: ", dispprob[p,q][i], " happened already: ", landscape[p,q].v_dispersed[i]))
+                    #end
                     n_disp[p,q]+=1 #number of emigrated individuals increases
-                    n_imm[newrow,newcol]+=1 #number of immigrated individuals increases
-                    #put dispersed individual into new patch
-                    push!(landscape[newrow,newcol].v_id, landscape[p,q].v_id[i]) 
-                    push!(landscape[newrow,newcol].v_hind, landscape[p,q].v_hind[i]) 
-                    push!(landscape[newrow,newcol].v_gind, landscape[p,q].v_gind[i])
-                    push!(landscape[newrow,newcol].v_tradeoff, landscape[p,q].v_tradeoff[i])
-                    push!(landscape[newrow,newcol].v_a, landscape[p,q].v_a[i])
-                    push!(landscape[newrow,newcol].v_deltah, landscape[p,q].v_deltah[i])
-                    push!(landscape[newrow, newcol].v_dispersed, true)
-                    push!(dispprob[newrow,newcol], dispprob[p,q][i])
-                    #remove individual from natal patch
+                    if (rand()>par["dispmort"]) #and also survives
+                        #find new patch only when the dispersing individual also survives and reaches the new patch
+                        if (argumentsdict["habitatemi"]==false) #if habitat independent dispersal
+                            if argumentsdict["global_dispersal"]==true #and global dispersal
+                                newrow, newcol= global_patch(numberrows,numbercols, p, q) #the new patch is global
+                            elseif argumentsdict["global_dispersal"]==false #and nearest neighbour dispersal
+                                newrow, newcol= nearest_patch(numberrows, numbercols, p, q) #the new patch is in the neighboorhood
+                            end
+                        elseif (argumentsdict["habitatemi"]==true) #if habitat dependent dispersal
+                            if argumentsdict["global_dispersal"]==true  #and global dispersal
+                                newrow, newcol= global_patch(numberrows,numbercols, p, q) #the new patch is global
+                            elseif argumentsdict["global_dispersal"]==false #and nearest neighbour dispersal
+                                newrow, newcol= nearest_patch(numberrows, numbercols, p, q) #the new patch is in the neighboorhood
+                            end
+                        end
+                        n_imm[newrow,newcol]+=1 #number of immigrated individuals increases
+                        #put dispersed individual into new patch
+                        push!(landscape[newrow,newcol].v_id, landscape[p,q].v_id[i]) 
+                        push!(landscape[newrow,newcol].v_hind, landscape[p,q].v_hind[i]) 
+                        push!(landscape[newrow,newcol].v_gind, landscape[p,q].v_gind[i])
+                        push!(landscape[newrow,newcol].v_tradeoff, landscape[p,q].v_tradeoff[i])
+                        push!(landscape[newrow,newcol].v_a, landscape[p,q].v_a[i])
+                        push!(landscape[newrow,newcol].v_deltah, landscape[p,q].v_deltah[i])
+                        push!(landscape[newrow, newcol].v_dispersed, true)
+                        push!(dispprob[newrow,newcol], dispprob[p,q][i])
+                    end
+                    #remove individual from natal patch, no matter whether it died during dispersal or now inhabits a new patch
                     splice!(landscape[p,q].v_id, i)
                     splice!(landscape[p,q].v_hind, i)
                     splice!(landscape[p,q].v_gind, i)
@@ -302,20 +312,6 @@ function dispersal!(landscape::Array{TPatch,2}, argumentsdict::Dict, par::Dict)
                     splice!(landscape[p,q].v_deltah, i)
                     splice!(landscape[p,q].v_dispersed, i)
                     splice!(dispprob[p,q], i) #also remove dispersal probability from array, otherwise the indices will get messed up!
-                    i -=1
-                elseif (landscape[p,q].v_dispersed[i] == false) &&(rand()<dispprob[p,q][i]) &&(rand()<par["dispmort"])
-                    #if dispersal but death during migration
-                    #remove individual from natal patch
-                    n_disp[p,q]+=1 #number of emigrated individuals increases, but not of immigrated individuals -> they die before that!
-                    splice!(landscape[p,q].v_id, i)
-                    splice!(landscape[p,q].v_hind, i) 
-                    splice!(landscape[p,q].v_gind, i)
-                    splice!(landscape[p,q].v_tradeoff, i)
-                    splice!(landscape[p,q].v_a, i)
-                    splice!(landscape[p,q].v_deltah, i)
-                    splice!(landscape[p,q].v_dispersed, i)
-                    splice!(dispprob[p,q], i) #also remove dispersal probability from array, otherwise the indices will get messed up!
-                   # println(length(dispprob[p,q]))
                     i -=1
                 end
                 i += 1
@@ -393,9 +389,9 @@ function analyze(landscape::Array{TPatch,2}, H_t_start::Array{Float64,2}, H_t_la
     end
 end
 
-#One funciton to rule them all! This finction actually runs the simulation by calling the other functions in the correct order
+#One function to rule them all! This function actually runs the simulation by calling the other functions in the correct order
 function Simulation_Run(parasource::String, n::Int64)
-    println("Now starting Simulation") #So we now, the simulation runs
+    println("Now starting Simulation") #So we know the simulation runs
     par=include(parasource)
     argumentsdict=read_arguments()
     colnames=["generation" "row" "col" "curr_env" "mean_env" "N" "meanh" "stdh" "meang" "stdg" "meanfert" "mean_dispprob" "mean_minfert"] #the column names for the results file
@@ -410,7 +406,6 @@ function Simulation_Run(parasource::String, n::Int64)
         n_disp, n_imm = dispersal!(landscape, argumentsdict, par) #dispersal before reproduction
         if i%10==0 #every tenth generation
             analyze(landscape,H_t_start, H_t_landscape, n_disp, n_imm, filename, i) #append all three results file with the current values
-           # println(i, " Generations complete")
         end
         landscape =NextGenFu(landscape, H_t_landscape, i, argumentsdict, par) #next generation
     end
