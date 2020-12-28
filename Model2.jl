@@ -13,12 +13,12 @@
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-##13.01.2020
+##28.12.2020
 ##Haploid, annual species in variable environment,  H_t of Normal distribution
 #survival of eggs dependent on environment
 #(environment variable H_t, individual optimum h_ind, and tolerance g_ind)
-#survival of larvae dependent on density
-#Trade-off between fertility and niche-width=Th, α= cost of being a generalist
+#survival of larvae dependent on density, following a classical Beverton-Holt
+#Trade-off between fertility and niche-width=Th, α= cost of being a generalist, following Chaianunporn & Hovestadt 2015
 #in a landscape that varies in this environmental parameter
 
 
@@ -29,7 +29,6 @@ using FreqTables #frequency tables -> gives frequencies of entrys in arrays as D
 using StatsBase #statistical analysis
 
 parasource="/home/ubuntu/ParameterDict.jl"
-#"/home/charlotte/Simulation_Run/ParameterDict.jl" #gives parameter source -> dictionary!
 
 #constructor for Patches, has arrays for the trait values, its coordinates and the start environmental value as fields
 struct TPatch
@@ -129,6 +128,7 @@ end
 #deltah (individual threshold fertility below which individuals disperse) -- evolves
 #id (individual id to mark the different strains)
 #each trait is one array per patch, individuals are represented by indices
+#this means, one adult individual's traits occupy the same position in all arrays. 
 function InitWorld(landscapesource::String, par::Dict, alpha::Int64)
     #println("sigma= ", par.σgind, "mu= ",par.μgind )
     H_t_start=read_world(landscapesource)
@@ -206,7 +206,7 @@ function set_environment(H_t_start::Array{Float64,2}, par::Dict, argumentsdict::
     return H_t_landscape
 end
 
-#function to get index of target patch under global dispersal 
+#function to get index of target patch under global dispersal,  p and q are row and column in landscape
 function global_patch(numbercols::Int64,numberrows::Int64,p::Int64,q::Int64) 
     targetrow = rand(1:numberrows)
     targetcol = rand(1:numbercols)
@@ -221,7 +221,7 @@ function global_patch(numbercols::Int64,numberrows::Int64,p::Int64,q::Int64)
     return targetrow, targetcol
 end
 
-#function for nearest neighbour dispersal, p and q are row and column in landscape
+#function to get index of target patch under neighbour dispersal, p and q are row and column in landscape
 function nearest_patch(numberrows::Int64, numbercols::Int64, p::Int64, q::Int64)
     targetrow = p+ rand(-1:1)
     targetcol=q+ rand(-1:1)
