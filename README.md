@@ -7,6 +7,7 @@ A thorough explanation of the simulation for one population can be found in "Env
 
 The model as presented here was used for the research in "The degree of spatial variation relative to temporal variation influences evolution of dispersal", C.S. Sieger & T. Hovestadt, 2020, Oikos,  https://doi.org/10.1111/oik.07567
 
+It was part of the doctoral research of C.S. Sieger, whose full  dissertation can be found here: https://opus.bibliothek.uni-wuerzburg.de/frontdoor/index/index/docId/21669
 
 License: GNU Affero General Public License v3.0
 TERMS AND CONDITIONS
